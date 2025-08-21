@@ -20,7 +20,7 @@ def create_double_star_network():
 
     # Second star (hub: 8) connected to bridge (1)
     G.add_edge(1, 8)
-    for i in range(9, 14):
+    for i in range(9, 16):
         G.add_edge(8, i)
 
     return G
