@@ -3,41 +3,51 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
-# --- 1. Define the Double-Star Network ---
-def create_double_star_network():
+# --- 1. Define a Small-World Network (Watts–Strogatz) ---
+def create_small_world_network(n=20, k=4, p=0.2, seed=42):
     """
-    Creates the 15-node double-star network.
-    Node 1 is the bridge, nodes 2 and 8 are hubs.
+    Creates a small-world network using the Watts–Strogatz model.
+    n = number of nodes
+    k = number of nearest neighbors (even integer)
+    p = rewiring probability (0 -> lattice, 1 -> random)
     """
-    G = nx.Graph()
-    nodes = range(1, 16)  # Now 15 nodes
-    G.add_nodes_from(nodes)
-
-    # First star (hub: 2) connected to bridge (1)
-    G.add_edge(1, 2)
-    for i in range(3, 8):
-        G.add_edge(2, i)
-
-    # Second star (hub: 8) connected to bridge (1)
-    G.add_edge(1, 8)
-    for i in range(9, 16):
-        G.add_edge(8, i)
-
+    G = nx.watts_strogatz_graph(n, k, p, seed=seed)
     return G
+
+# --- 1b. Optional: Compute small-world metrics ---
+def compute_small_world_metrics(G):
+    C = nx.average_clustering(G)
+    L = nx.average_shortest_path_length(G)
+
+    n = G.number_of_nodes()
+    k = int(np.mean([deg for _, deg in G.degree()]))
+
+    # Generate a comparable random graph
+    G_rand = nx.gnm_random_graph(n, int(n * k / 2), seed=42)
+
+    # Ensure connectivity: take the largest connected component
+    if not nx.is_connected(G_rand):
+        largest_cc = max(nx.connected_components(G_rand), key=len)
+        G_rand = G_rand.subgraph(largest_cc).copy()
+
+    C_rand = nx.average_clustering(G_rand)
+    L_rand = nx.average_shortest_path_length(G_rand)
+
+    S = (C / C_rand) / (L / L_rand)
+    return C, L, C_rand, L_rand, S
+
 
 # --- 2. Calculate the Adjacent Edge Index (for single nodes) ---
 def calculate_single_node_index(G):
-    """Calculates the 'adjacent edge index' (R_i) for each node."""
     nodelist = sorted(G.nodes())
     L = nx.laplacian_matrix(G, nodelist=nodelist).toarray()
-
     eigenvalues, eigenvectors = np.linalg.eigh(L)
-    fiedler_vector = eigenvectors[:, 1]  # 2nd smallest eigenvalue vector
+    fiedler_vector = eigenvectors[:, 1]  # Fiedler vector
 
     indices = {}
     for i in nodelist:
         r_i = 0
-        xi = fiedler_vector[i - 1]
+        xi = fiedler_vector[i - 1]  # adjust to 0-based
         for neighbor in G.neighbors(i):
             xj = fiedler_vector[neighbor - 1]
             r_i += np.abs(xi - xj)
@@ -47,7 +57,6 @@ def calculate_single_node_index(G):
 
 # --- 3. Calculate the Adjacent Edge Index Matrix (for node pairs) ---
 def calculate_node_pair_matrix(G, single_node_indices, fiedler_vector):
-    """Generates the R^2 matrix for node pairs."""
     num_nodes = G.number_of_nodes()
     nodelist = sorted(G.nodes())
     R2_matrix = np.zeros((num_nodes, num_nodes))
@@ -56,32 +65,34 @@ def calculate_node_pair_matrix(G, single_node_indices, fiedler_vector):
         for k_idx, node_k in enumerate(nodelist):
             if j_idx >= k_idx:
                 continue
+
             R_j = single_node_indices[node_j]
             R_k = single_node_indices[node_k]
+
             intersection_count = 1 if G.has_edge(node_j, node_k) else 0
             x_j = fiedler_vector[j_idx]
             x_k = fiedler_vector[k_idx]
             fiedler_difference = np.abs(x_j - x_k)
+
             correction_term = intersection_count * fiedler_difference
             R_jk = R_j + R_k - correction_term
             R2_matrix[j_idx, k_idx] = R_jk
+
     return R2_matrix
 
 # --- 4. Define Chua's Circuit and Network Dynamics ---
 def chua_dynamics(t, state):
-    """ODEs for a single Chua's circuit."""
     p, q, r = state
     gamma1, gamma2, gamma3, gamma4 = 10.0, 18.0, -4.0/3.0, -3.0/4.0
     g_p = gamma4 * p + 0.5 * (gamma3 - gamma4) * (abs(p + 1) - abs(p - 1))
     return [-gamma1 * (p - q + g_p), p - q + r, -gamma2 * q]
 
 def coupled_network_dynamics(t, network_state, G, L, controlled_nodes, c_base, c_pin):
-    """Dynamics for the entire network of coupled Chua's circuits."""
     num_nodes = G.number_of_nodes()
     network_state = network_state.reshape((num_nodes, 3))
     d_dt = np.zeros_like(network_state)
-
     coupling_term = np.zeros_like(network_state)
+
     for i in range(num_nodes):
         for j in range(num_nodes):
             if L[i, j] != 0:
@@ -96,37 +107,44 @@ def coupled_network_dynamics(t, network_state, G, L, controlled_nodes, c_base, c
 
 # --- Main execution block ---
 if __name__ == '__main__':
-    # Part 1 & 2: Build network and calculate indices
-    G = create_double_star_network()
-    single_node_indices, fiedler_vector = calculate_single_node_index(G)
-
+    # --- Part 1: Build small-world network ---
+    G = create_small_world_network(n=20, k=4, p=0.2)
     pos = nx.spring_layout(G, seed=42)
     nx.draw(
         G, pos,
         with_labels=True,
-        node_size=1000,
+        node_size=600,
         node_color="skyblue",
-        font_size=10,
+        font_size=9,
         font_weight="bold",
         edge_color="gray"
     )
-    plt.title("Double-Star Network", fontsize=14)
+    plt.title("Watts–Strogatz Small-World Network", fontsize=14)
     plt.show()
 
+    # Compute small-world metrics
+    C, L, C_rand, L_rand, S = compute_small_world_metrics(G)
+    print("--- Small-World Metrics ---")
+    print(f"Clustering Coefficient C = {C:.3f} (Random: {C_rand:.3f})")
+    print(f"Average Path Length L    = {L:.3f} (Random: {L_rand:.3f})")
+    print(f"Small-World Index S      = {S:.3f}")
+    print("-" * 50)
+
+    # --- Part 2: Single node indices ---
+    single_node_indices, fiedler_vector = calculate_single_node_index(G)
     print("--- Adjacent Edge Index (Single Node Centrality) ---")
     sorted_indices = sorted(single_node_indices.items(), key=lambda item: item[1], reverse=True)
     for node, index in sorted_indices:
-        role = "Bridge" if node == 1 else "Hub" if node in [2, 8] else "Leaf"
-        print(f"Node {node:2d} ({role:^6s}): Index = {index:.4f}")
+        print(f"Node {node:2d}: Index = {index:.4f}")
 
-    # Part 3: Node Pair Matrix
+    # --- Part 3: Node Pair Matrix ---
     R2_matrix = calculate_node_pair_matrix(G, single_node_indices, fiedler_vector)
     print("\n--- Generated Adjacent Edge Index Matrix for Node Pairs (R^2) ---")
     np.set_printoptions(precision=3, suppress=True)
     print(R2_matrix)
     print("-" * 60)
 
-    # Part 4 & 5: Synchronization simulations
+    # --- Part 4 & 5: Synchronization Simulations ---
     print("\n--- Running Synchronization Simulations ---")
     base_coupling_strength = 2.5
     pinning_coupling_strength = 5 * base_coupling_strength
@@ -142,9 +160,9 @@ if __name__ == '__main__':
     L = nx.laplacian_matrix(G, nodelist=sorted(G.nodes())).toarray()
 
     control_scenarios = {
-        "Control Bridge (Node 1)": [1],
-        "Control Hub (Node 2)": [2],
-        "Control Leaf (Node 3)": [3],
+        "Control Node 1": [1],
+        "Control Node 2": [2],
+        "Control Node 3": [3],
     }
 
     results = {}
@@ -156,25 +174,21 @@ if __name__ == '__main__':
         )
         results[name] = sol.y
 
-    # --- Plotting all nodes per scenario ---
+    # --- Plot results ---
     print("\nSimulations complete. Plotting results...")
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
-
-    for ax, (name, states) in zip(axes, results.items()):
+    plt.figure(figsize=(12, 7))
+    for name, states in results.items():
         states = states.reshape(num_nodes, 3, -1)
         avg_state = np.mean(states, axis=0)
-        errors = np.linalg.norm(states - avg_state, axis=1)
+        error = np.linalg.norm(states - avg_state, axis=1)
+        total_error = np.mean(error, axis=0)
+        plt.plot(t_eval, total_error, label=name)
 
-        for node_idx in range(num_nodes):
-            ax.plot(t_eval, errors[node_idx], alpha=0.6, linewidth=1, label=f"Node {node_idx+1}")
-
-        ax.set_title(name, fontsize=14)
-        ax.set_xlabel("Time (t)", fontsize=12)
-        ax.set_yscale("log")
-        ax.grid(True, linestyle="--", alpha=0.6)
-
-    axes[0].set_ylabel("Synchronization Error per Node", fontsize=12)
-    axes[-1].legend(fontsize=8, loc="upper right", ncol=2)
-    plt.suptitle("Synchronization of Double-Star Network (All Nodes)", fontsize=16)
+    plt.title("Synchronization in Small-World Network with Controlled Nodes", fontsize=16)
+    plt.xlabel("Time (t)", fontsize=12)
+    plt.ylabel("Average Synchronization Error", fontsize=12)
+    plt.legend(fontsize=10)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.yscale('log')
     plt.ylim(bottom=1e-5)
     plt.show()
