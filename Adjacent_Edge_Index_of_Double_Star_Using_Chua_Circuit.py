@@ -129,7 +129,19 @@ if __name__ == '__main__':
     # --- Part 1 & 2: Build network and calculate single node indices ---
     G = create_double_star_network()
     single_node_indices, fiedler_vector = calculate_single_node_index(G)
-
+    pos = nx.spring_layout(G, seed=42)  # layout for better positioning
+    nx.draw(
+            G, pos,
+            with_labels=True,
+            node_size=1000,
+            node_color="skyblue",
+            font_size=10,
+            font_weight="bold",
+            edge_color="gray"
+        )
+    
+    plt.title("Double-Star Network", fontsize=14)
+    plt.show()
     print("--- Adjacent Edge Index (Single Node Centrality) ---")
     sorted_indices = sorted(single_node_indices.items(), key=lambda item: item[1], reverse=True)
     for node, index in sorted_indices:
