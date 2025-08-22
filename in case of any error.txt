@@ -1,0 +1,5 @@
+run this in the cmd
+
+git clone https://github.com/SamuelKurianRoy/Node-Centrality
+
+delete your original node centrality folder and replace it with the folder you got on running the above code
