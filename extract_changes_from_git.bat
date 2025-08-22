@@ -1,5 +1,5 @@
 @echo off
-cd "D:\#DIGITAL UNIVERSITY\Sem 3\Computational non linear dynamics\Node-Centrality"
+cd "C:\Users\hai\Desktop\Node Centrality- Sishu Sir"
 echo Pulling latest changes...
 git pull origin main
 pause

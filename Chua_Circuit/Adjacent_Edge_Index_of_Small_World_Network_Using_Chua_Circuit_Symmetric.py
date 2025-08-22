@@ -5,12 +5,6 @@ from scipy.integrate import solve_ivp
 
 # --- 1. Define a Small-World Network (Watts–Strogatz) ---
 def create_small_world_network(n=20, k=4, p=0.2, seed=42):
-    """
-    Creates a small-world network using the Watts–Strogatz model.
-    n = number of nodes
-    k = number of nearest neighbors (even integer)
-    p = rewiring probability (0 -> lattice, 1 -> random)
-    """
     G = nx.watts_strogatz_graph(n, k, p, seed=seed)
     return G
 
@@ -35,7 +29,6 @@ def compute_small_world_metrics(G):
 
     S = (C / C_rand) / (L / L_rand)
     return C, L, C_rand, L_rand, S
-
 
 # --- 2. Calculate the Adjacent Edge Index (for single nodes) ---
 def calculate_single_node_index(G):
@@ -174,20 +167,29 @@ if __name__ == '__main__':
         )
         results[name] = sol.y
 
-    # --- Plot results ---
+    # --- Plot results (per-node errors instead of average only) ---
     print("\nSimulations complete. Plotting results...")
     plt.figure(figsize=(12, 7))
+
     for name, states in results.items():
         states = states.reshape(num_nodes, 3, -1)
-        avg_state = np.mean(states, axis=0)
-        error = np.linalg.norm(states - avg_state, axis=1)
-        total_error = np.mean(error, axis=0)
-        plt.plot(t_eval, total_error, label=name)
 
-    plt.title("Synchronization in Small-World Network with Controlled Nodes", fontsize=16)
+        # Calculate synchronization error for each node
+        avg_state = np.mean(states, axis=0)
+        errors = np.linalg.norm(states - avg_state, axis=1)  # shape: (num_nodes, time_points)
+
+        # Plot each node’s trajectory
+        for node_idx in range(num_nodes):
+            plt.plot(
+                t_eval, errors[node_idx],
+                alpha=0.6, linewidth=1,
+                label=f"{name} - Node {node_idx+1}" if node_idx == 0 else None
+            )
+
+    plt.title("Synchronization in Small-World Network (All Nodes)", fontsize=16)
     plt.xlabel("Time (t)", fontsize=12)
-    plt.ylabel("Average Synchronization Error", fontsize=12)
-    plt.legend(fontsize=10)
+    plt.ylabel("Synchronization Error per Node", fontsize=12)
+    plt.legend(fontsize=8, loc="upper right", ncol=2)
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.yscale('log')
     plt.ylim(bottom=1e-5)
