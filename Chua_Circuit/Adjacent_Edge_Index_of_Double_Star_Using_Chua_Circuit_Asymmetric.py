@@ -1,16 +1,16 @@
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp
+import pandas as pd
 
 # --- 1. Define the Double-Star Network ---
 def create_double_star_network():
     """
-    Creates the 15-node double-star network.
+    Creates the 13-node double-star network.
     Node 1 is the bridge, nodes 2 and 8 are hubs.
     """
     G = nx.Graph()
-    nodes = range(1, 16)  # Now 15 nodes
+    nodes = range(1, 14)
     G.add_nodes_from(nodes)
 
     # First star (hub: 2) connected to bridge (1)
@@ -20,7 +20,7 @@ def create_double_star_network():
 
     # Second star (hub: 8) connected to bridge (1)
     G.add_edge(1, 8)
-    for i in range(9, 16):
+    for i in range(9, 17):
         G.add_edge(8, i)
 
     return G
@@ -47,7 +47,7 @@ def calculate_single_node_index(G):
 
 # --- 3. Calculate the Adjacent Edge Index Matrix (for node pairs) ---
 def calculate_node_pair_matrix(G, single_node_indices, fiedler_vector):
-    """Generates the R^2 matrix for node pairs."""
+    """Generates the R² matrix for node pairs."""
     num_nodes = G.number_of_nodes()
     nodelist = sorted(G.nodes())
     R2_matrix = np.zeros((num_nodes, num_nodes))
@@ -67,40 +67,13 @@ def calculate_node_pair_matrix(G, single_node_indices, fiedler_vector):
             R2_matrix[j_idx, k_idx] = R_jk
     return R2_matrix
 
-# --- 4. Define Chua's Circuit and Network Dynamics ---
-def chua_dynamics(t, state):
-    """ODEs for a single Chua's circuit."""
-    p, q, r = state
-    gamma1, gamma2, gamma3, gamma4 = 10.0, 18.0, -4.0/3.0, -3.0/4.0
-    g_p = gamma4 * p + 0.5 * (gamma3 - gamma4) * (abs(p + 1) - abs(p - 1))
-    return [-gamma1 * (p - q + g_p), p - q + r, -gamma2 * q]
-
-def coupled_network_dynamics(t, network_state, G, L, controlled_nodes, c_base, c_pin):
-    """Dynamics for the entire network of coupled Chua's circuits."""
-    num_nodes = G.number_of_nodes()
-    network_state = network_state.reshape((num_nodes, 3))
-    d_dt = np.zeros_like(network_state)
-
-    coupling_term = np.zeros_like(network_state)
-    for i in range(num_nodes):
-        for j in range(num_nodes):
-            if L[i, j] != 0:
-                is_controlled = ((i + 1) in controlled_nodes or (j + 1) in controlled_nodes)
-                c = c_pin if is_controlled else c_base
-                coupling_term[i] -= c * L[i, j] * network_state[j]
-
-    for i in range(num_nodes):
-        d_dt[i] = chua_dynamics(t, network_state[i]) + coupling_term[i]
-
-    return d_dt.flatten()
-
 # --- Main execution block ---
 if __name__ == '__main__':
-    # Part 1 & 2: Build network and calculate indices
+    # Step 1: Build network
     G = create_double_star_network()
-    single_node_indices, fiedler_vector = calculate_single_node_index(G)
-
     pos = nx.spring_layout(G, seed=42)
+
+    # Draw plain blue network first
     nx.draw(
         G, pos,
         with_labels=True,
@@ -110,71 +83,69 @@ if __name__ == '__main__':
         font_weight="bold",
         edge_color="gray"
     )
-    plt.title("Double-Star Network", fontsize=14)
+    plt.title("Double-Star Network (Initial)", fontsize=14)
     plt.show()
 
-    print("--- Adjacent Edge Index (Single Node Centrality) ---")
-    sorted_indices = sorted(single_node_indices.items(), key=lambda item: item[1], reverse=True)
-    for node, index in sorted_indices:
-        role = "Bridge" if node == 1 else "Hub" if node in [2, 8] else "Leaf"
-        print(f"Node {node:2d} ({role:^6s}): Index = {index:.4f}")
+    # Step 2: Calculate node indices
+    single_node_indices, fiedler_vector = calculate_single_node_index(G)
 
-    # Part 3: Node Pair Matrix
+    print("Adjacent Edge Index (R_i) for each node:")
+    for node, index in single_node_indices.items():
+        print(f"Node {node}: {index:.4f}")
+
+    # Find most important node
+    most_important_node = max(single_node_indices, key=single_node_indices.get)
+
+    # Step 3: Generate and display the Node Pair Matrix
     R2_matrix = calculate_node_pair_matrix(G, single_node_indices, fiedler_vector)
-    print("\n--- Generated Adjacent Edge Index Matrix for Node Pairs (R^2) ---")
-    np.set_printoptions(precision=3, suppress=True)
-    print(R2_matrix)
-    print("-" * 60)
+    nodelist = sorted(G.nodes())
+    R2_df = pd.DataFrame(R2_matrix, index=nodelist, columns=nodelist)
 
-    # Part 4 & 5: Synchronization simulations
-    print("\n--- Running Synchronization Simulations ---")
-    base_coupling_strength = 2.5
-    pinning_coupling_strength = 5 * base_coupling_strength
-    print(f"Using Base Coupling Strength: {base_coupling_strength}")
-    print(f"Using Pinning Control Strength: {pinning_coupling_strength}\n")
+    # Find maximum R² value and position
+    max_val = np.max(R2_matrix)
+    max_pos = np.unravel_index(np.argmax(R2_matrix), R2_matrix.shape)
+    max_row, max_col = nodelist[max_pos[0]], nodelist[max_pos[1]]
 
-    num_nodes = G.number_of_nodes()
-    t_span = [0, 12]
-    t_eval = np.linspace(t_span[0], t_span[1], 500)
+    print("\nR² Matrix (for node pairs):")
+    for i, row in enumerate(R2_df.values):
+        row_str = []
+        for j, val in enumerate(row):
+            if (i, j) == max_pos:
+                # Highlight maximum with a star and green color
+                row_str.append(f"\033[1;32m{val:.4f}*\033[0m")
+            else:
+                row_str.append(f"{val:.4f}")
+        print(f"{nodelist[i]:2d} [{', '.join(row_str)}]")
 
-    np.random.seed(42)
-    initial_conditions = (np.random.rand(num_nodes * 3) - 0.5) * 10
-    L = nx.laplacian_matrix(G, nodelist=sorted(G.nodes())).toarray()
+    most_important_pair = (max_row, max_col)
 
-    control_scenarios = {
-        "Control Bridge (Node 1)": [1],
-        "Control Hub (Node 2)": [2],
-        "Control Leaf (Node 3)": [3],
-    }
+    print(f"\nMost Important Node: {most_important_node}")
+    print(f"Most Important Pair: {most_important_pair} with R² = {max_val:.4f}")
 
-    results = {}
-    for name, nodes_to_control in control_scenarios.items():
-        print(f"Simulating: {name}...")
-        sol = solve_ivp(
-            fun=coupled_network_dynamics, t_span=t_span, y0=initial_conditions,
-            t_eval=t_eval, args=(G, L, nodes_to_control, base_coupling_strength, pinning_coupling_strength)
-        )
-        results[name] = sol.y
+    # Step 4: Draw network with highlighted nodes & pair
+    node_colors = ["skyblue"] * len(G.nodes())
+    node_colors[nodelist.index(most_important_node)] = "red"
 
-    # --- Plotting all nodes per scenario ---
-    print("\nSimulations complete. Plotting results...")
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
+    for node in most_important_pair:
+        if node != most_important_node:  # don't override red node
+            node_colors[nodelist.index(node)] = "green"
 
-    for ax, (name, states) in zip(axes, results.items()):
-        states = states.reshape(num_nodes, 3, -1)
-        avg_state = np.mean(states, axis=0)
-        errors = np.linalg.norm(states - avg_state, axis=1)
+    edge_colors = []
+    for u, v in G.edges():
+        if set([u, v]) == set(most_important_pair):
+            edge_colors.append("green")
+        else:
+            edge_colors.append("gray")
 
-        for node_idx in range(num_nodes):
-            ax.plot(t_eval, errors[node_idx], alpha=0.6, linewidth=1, label=f"Node {node_idx+1}")
-
-        ax.set_title(name, fontsize=14)
-        ax.set_xlabel("Time (t)", fontsize=12)
-        ax.set_yscale("log")
-        ax.grid(True, linestyle="--", alpha=0.6)
-
-    axes[0].set_ylabel("Synchronization Error per Node", fontsize=12)
-    axes[-1].legend(fontsize=8, loc="upper right", ncol=2)
-    plt.suptitle("Synchronization of Double-Star Network (All Nodes)", fontsize=16)
-    plt.ylim(bottom=1e-5)
+    nx.draw(
+        G, pos,
+        with_labels=True,
+        node_size=1000,
+        node_color=node_colors,
+        font_size=10,
+        font_weight="bold",
+        edge_color=edge_colors,
+        width=2
+    )
+    plt.title("Double-Star Network (Highlighted Node & Pair)", fontsize=14)
     plt.show()
