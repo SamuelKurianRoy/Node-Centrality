@@ -149,3 +149,18 @@ if __name__ == '__main__':
     )
     plt.title("Double-Star Network (Highlighted Node & Pair)", fontsize=14)
     plt.show()
+
+    # --- Step 5: Export to GEXF for Gephi ---
+    # Add Ri to nodes
+    nx.set_node_attributes(G, single_node_indices, name="Ri")
+
+    # Add R2 to edges
+    for u, v in G.edges():
+        i = nodelist.index(u)
+        j = nodelist.index(v)
+        R2_val = R2_matrix[i, j] if R2_matrix[i, j] != 0 else R2_matrix[j, i]
+        G[u][v]["R2"] = float(R2_val)
+
+    # Write to GEXF
+    nx.write_gexf(G, "double_star_with_Ri_R2.gexf")
+    print("Exported network to double_star_with_Ri_R2.gexf")
