@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # --- 1. Define Chialvo Neuron (1D Map) ---
-def chialvo_update(x, alpha=3.5, beta=0.2):
+def chialvo_update(x, alpha=3.9, beta=0.01):
     """One iteration of Chialvo neuron dynamics (bounded)."""
     x_new = alpha * x * (1 - x) - beta
     # keep values bounded (avoid overflow)
@@ -26,7 +26,7 @@ def create_double_star_network():
     return G
 
 # --- 3. Simulate Coupled Chialvo Neurons ---
-def simulate_network(G, steps=2000, alpha=3.5, beta=0.2, coupling=0.05):
+def simulate_network(G, steps=2000, alpha=3.9, beta=0.01, coupling=0.05):
     n = G.number_of_nodes()
     A = nx.to_numpy_array(G)
     x = np.random.rand(n)  # initial states
