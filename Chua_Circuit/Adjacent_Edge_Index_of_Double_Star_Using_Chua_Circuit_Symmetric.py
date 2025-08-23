@@ -10,17 +10,17 @@ def create_double_star_network():
     Node 1 is the bridge, nodes 2 and 8 are hubs.
     """
     G = nx.Graph()
-    nodes = range(1, 14)
+    nodes = range(1, 50)
     G.add_nodes_from(nodes)
 
     # First star (hub: 2) connected to bridge (1)
     G.add_edge(1, 2)
-    for i in range(3, 8):
+    for i in range(3, 27):
         G.add_edge(2, i)
 
     # Second star (hub: 8) connected to bridge (1)
     G.add_edge(1, 8)
-    for i in range(9, 14):
+    for i in range(27, 50):
         G.add_edge(8, i)
 
     return G
