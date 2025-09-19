@@ -16,6 +16,8 @@ def create_double_star_network():
     # First star (hub: 2) connected to bridge (1)
     G.add_edge(1, 2)
     for i in range(3, 30):
+        if i == 8:
+            continue
         G.add_edge(2, i)
 
     # Second star (hub: 8) connected to bridge (1)

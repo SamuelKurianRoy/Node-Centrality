@@ -187,3 +187,11 @@ if __name__=="__main__":
                                         "Most Imp Pair","R(pair)","SyncTime(pair)"])
     print("\nSummary:")
     print(df.to_string(index=False))
+
+    G = create_double_star_13()
+    pos = nx.spring_layout(G, seed=42)
+
+    # Draw initial network
+    nx.draw(G, pos, with_labels=True, node_size=1000, node_color="skyblue", edge_color="gray")
+    plt.title("Double-Star Network (Initial)", fontsize=14)
+    plt.show()
