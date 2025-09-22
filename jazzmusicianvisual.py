@@ -44,6 +44,7 @@ if os.path.exists(file_path):
 
     plt.title("Network Visualization from .wl File", size=20)
     plt.show()
+    nx.write_gexf(G_edge,"jazz_musicians.gexf")
 
 else:
     print(f"Error: The file '{file_path}' was not found.")
