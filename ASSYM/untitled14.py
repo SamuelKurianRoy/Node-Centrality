@@ -142,6 +142,78 @@ def time_to_sync(errors, t_eval, tol=1e-3):
     below = np.where(max_err < tol)[0]
     return t_eval[below[0]] if len(below)>0 else np.inf
 
+def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R2_matrix):
+    """Add centrality metrics as node and edge attributes"""
+    nodelist = sorted(G.nodes())
+    
+    # Add node attributes
+    for i, node in enumerate(nodelist):
+        G.nodes[node]['fiedler_value'] = float(fiedler_vector[i])
+        G.nodes[node]['R_value'] = float(single_node_indices[node])
+        G.nodes[node]['degree'] = G.degree(node)
+        G.nodes[node]['node_id'] = node
+        
+        # Add normalized versions for better visualization in Gephi
+        G.nodes[node]['fiedler_normalized'] = float(fiedler_vector[i])
+        G.nodes[node]['R_normalized'] = float(single_node_indices[node])
+    
+    # Add edge attributes with R² values
+    for edge in G.edges():
+        node_u, node_v = edge
+        u_idx = nodelist.index(node_u)
+        v_idx = nodelist.index(node_v)
+        
+        # Get R² value for this pair
+        if u_idx < v_idx:
+            r2_value = R2_matrix[u_idx, v_idx]
+        else:
+            r2_value = R2_matrix[v_idx, u_idx]
+        
+        G.edges[edge]['R2_value'] = float(r2_value)
+        G.edges[edge]['weight'] = 1.0  # Default weight
+        
+        # Add individual R values for the connected nodes
+        G.edges[edge]['R_u'] = float(single_node_indices[node_u])
+        G.edges[edge]['R_v'] = float(single_node_indices[node_v])
+        
+        # Add Fiedler difference
+        u_fiedler = fiedler_vector[u_idx]
+        v_fiedler = fiedler_vector[v_idx]
+        G.edges[edge]['fiedler_diff'] = float(abs(u_fiedler - v_fiedler))
+
+def export_enhanced_gexf(network_name, G):
+    """Export graph with all centrality attributes to GEXF"""
+    # Calculate centrality metrics
+    single_indices, fiedler = calculate_single_node_index(G)
+    R2_matrix = calculate_node_pair_matrix(G, single_indices, fiedler)
+    
+    # Add attributes to graph
+    add_centrality_attributes_to_graph(G, single_indices, fiedler, R2_matrix)
+    
+    # Normalize values for better visualization (0-1 range)
+    all_r_values = list(single_indices.values())
+    all_fiedler_values = list(fiedler)
+    
+    r_min, r_max = min(all_r_values), max(all_r_values)
+    f_min, f_max = min(all_fiedler_values), max(all_fiedler_values)
+    
+    for node in G.nodes():
+        if r_max != r_min:
+            G.nodes[node]['R_normalized'] = (single_indices[node] - r_min) / (r_max - r_min)
+        if f_max != f_min:
+            node_idx = sorted(G.nodes()).index(node)
+            G.nodes[node]['fiedler_normalized'] = (fiedler[node_idx] - f_min) / (f_max - f_min)
+    
+    # Export to GEXF
+    filename = f"{network_name.lower().replace(' ', '_').replace('(', '').replace(')', '')}.gexf"
+    nx.write_gexf(G, filename)
+    print(f"Enhanced GEXF exported to: {filename}")
+    
+    # Print summary of attributes added
+    print(f"Node attributes added: {list(G.nodes(data=True))[0][1].keys()}")
+    print(f"Edge attributes added: {list(G.edges(data=True))[0][2].keys()}")
+    
+    return filename
 # ---------- Main ----------
 if __name__=="__main__":
     networks = {
@@ -188,10 +260,13 @@ if __name__=="__main__":
     print("\nSummary:")
     print(df.to_string(index=False))
 
-    G = create_double_star_13()
-    pos = nx.spring_layout(G, seed=42)
+    # # G = create_double_star_13()
+    # pos = nx.spring_layout(G, seed=42)
 
-    # Draw initial network
-    nx.draw(G, pos, with_labels=True, node_size=1000, node_color="skyblue", edge_color="gray")
-    plt.title("Double-Star Network (Initial)", fontsize=14)
-    plt.show()
+    # # Draw initial network
+    # nx.draw(G, pos, with_labels=True, node_size=1000, node_color="skyblue", edge_color="gray")
+    # plt.title("Double-Star Network", fontsize=14)
+    # plt.show()
+
+    export_enhanced_gexf("Asymmetric (15 nodes)", G)
+    # nx.write_gexf(G, "double_star_network.gexf")
