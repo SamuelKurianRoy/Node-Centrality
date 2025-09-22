@@ -142,7 +142,39 @@ def time_to_sync(errors, t_eval, tol=1e-3):
     below = np.where(max_err < tol)[0]
     return t_eval[below[0]] if len(below)>0 else np.inf
 
-def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R2_matrix):
+def calculate_single_node_index(G):
+    nodelist = sorted(G.nodes())
+    L = nx.laplacian_matrix(G, nodelist=nodelist).toarray()
+    eigenvalues, eigenvectors = np.linalg.eigh(L)
+    fiedler_vector = eigenvectors[:, 1]  # 2nd smallest
+    indices = {}
+    for i in nodelist:
+        r_i = 0
+        xi = fiedler_vector[i - 1]
+        for neighbor in G.neighbors(i):
+            xj = fiedler_vector[neighbor - 1]
+            r_i += abs(xi - xj)
+        indices[i] = r_i
+    return indices, fiedler_vector
+
+def calculate_node_pair_matrix(G, single_node_indices, fiedler_vector):
+    nodelist = sorted(G.nodes())
+    num_nodes = len(nodelist)
+    R2_matrix = np.zeros((num_nodes, num_nodes))
+    for j_idx, node_j in enumerate(nodelist):
+        for k_idx, node_k in enumerate(nodelist):
+            if j_idx >= k_idx: continue
+            R_j = single_node_indices[node_j]
+            R_k = single_node_indices[node_k]
+            intersection_count = 1 if G.has_edge(node_j, node_k) else 0
+            x_j = fiedler_vector[j_idx]
+            x_k = fiedler_vector[k_idx]
+            correction_term = intersection_count * abs(x_j - x_k)
+            R_jk = R_j + R_k - correction_term
+            R2_matrix[j_idx, k_idx] = R_jk
+    return R2_matrix
+
+def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R2_matrix, include_virtual_edges=True):
     """Add centrality metrics as node and edge attributes"""
     nodelist = sorted(G.nodes())
     
@@ -157,7 +189,18 @@ def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R
         G.nodes[node]['fiedler_normalized'] = float(fiedler_vector[i])
         G.nodes[node]['R_normalized'] = float(single_node_indices[node])
     
-    # Add edge attributes with R² values
+    # Store original edges for marking
+    original_edges = set(G.edges())
+    
+    # Add virtual edges for all non-connected pairs if requested
+    if include_virtual_edges:
+        for i in range(len(nodelist)):
+            for j in range(i+1, len(nodelist)):
+                node_u, node_v = nodelist[i], nodelist[j]
+                if not G.has_edge(node_u, node_v):
+                    G.add_edge(node_u, node_v)
+    
+    # Add edge attributes with R² values for ALL edges (original + virtual)
     for edge in G.edges():
         node_u, node_v = edge
         u_idx = nodelist.index(node_u)
@@ -170,7 +213,14 @@ def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R
             r2_value = R2_matrix[v_idx, u_idx]
         
         G.edges[edge]['R2_value'] = float(r2_value)
-        G.edges[edge]['weight'] = 1.0  # Default weight
+        
+        # Mark edge type
+        if edge in original_edges or (node_v, node_u) in original_edges:
+            G.edges[edge]['edge_type'] = 'original'
+            G.edges[edge]['weight'] = 1.0  # Original edges have weight 1
+        else:
+            G.edges[edge]['edge_type'] = 'virtual'
+            G.edges[edge]['weight'] = 0.1  # Virtual edges have lower weight
         
         # Add individual R values for the connected nodes
         G.edges[edge]['R_u'] = float(single_node_indices[node_u])
@@ -180,6 +230,9 @@ def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R
         u_fiedler = fiedler_vector[u_idx]
         v_fiedler = fiedler_vector[v_idx]
         G.edges[edge]['fiedler_diff'] = float(abs(u_fiedler - v_fiedler))
+        
+        # Add sum of individual R values for comparison
+        G.edges[edge]['R_sum'] = float(single_node_indices[node_u] + single_node_indices[node_v])
 
 def export_enhanced_gexf(network_name, G):
     """Export graph with all centrality attributes to GEXF"""
@@ -214,6 +267,7 @@ def export_enhanced_gexf(network_name, G):
     print(f"Edge attributes added: {list(G.edges(data=True))[0][2].keys()}")
     
     return filename
+
 # ---------- Main ----------
 if __name__=="__main__":
     networks = {
@@ -269,4 +323,6 @@ if __name__=="__main__":
     # plt.show()
 
     export_enhanced_gexf("Asymmetric (15 nodes)", G)
+    export_enhanced_gexf("Paper Symmetric (13 nodes)", G)
+
     # nx.write_gexf(G, "double_star_network.gexf")
