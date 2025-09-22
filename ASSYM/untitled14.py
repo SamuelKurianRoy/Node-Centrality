@@ -192,13 +192,13 @@ def add_centrality_attributes_to_graph(G, single_node_indices, fiedler_vector, R
     # Store original edges for marking
     original_edges = set(G.edges())
     
-    # Add virtual edges for all non-connected pairs if requested
-    if include_virtual_edges:
-        for i in range(len(nodelist)):
-            for j in range(i+1, len(nodelist)):
-                node_u, node_v = nodelist[i], nodelist[j]
-                if not G.has_edge(node_u, node_v):
-                    G.add_edge(node_u, node_v)
+    # # Add virtual edges for all non-connected pairs if requested
+    # if include_virtual_edges:
+    #     for i in range(len(nodelist)):
+    #         for j in range(i+1, len(nodelist)):
+    #             node_u, node_v = nodelist[i], nodelist[j]
+    #             if not G.has_edge(node_u, node_v):
+    #                 G.add_edge(node_u, node_v)
     
     # Add edge attributes with R² values for ALL edges (original + virtual)
     for edge in G.edges():
