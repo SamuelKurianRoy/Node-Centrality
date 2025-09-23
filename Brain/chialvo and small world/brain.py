@@ -154,7 +154,11 @@ if __name__ == "__main__":
 
     # --- Step 1: Build the Brain Model ---
     brain_network = create_brain_model(nodes_per_hemisphere=N_PER_HEMISPHERE)
-
+     # Draw initial network
+    pos = nx.spring_layout(brain_network, seed=42)
+    nx.draw(brain_network, pos, with_labels=True, node_size=1000, node_color="skyblue", edge_color="gray")
+    plt.title("Double-Star Network", fontsize=14)
+    plt.show()
     # --- Step 2: Topological Prediction ---
     print("\nCalculating adjacent edge index for all neurons...")
     adj_indices = calculate_adjacent_edge_index(brain_network)
