@@ -16,9 +16,7 @@ try:
 except ImportError:
     print("CuPy not found. Running on CPU only.")
 
-# ==============================================================================
-# PROCEDURAL NETWORK GENERATION (Unchanged)
-# ==============================================================================
+
 def generate_fractal_network(seed_graph, iterations):
     if iterations == 0:
         print("--- Generating Network: 0 iterations (copy of original) ---")
