@@ -1,7 +1,0 @@
-numpy
-scipy
-matplotlib
-network
-pandas
-IPython
-tqdm
