@@ -2,5 +2,5 @@
 cd "D:\Node-Centrality"
 git add .
 git commit -m "Made Changes"
-git push origin old
+git push origin main
 pause
