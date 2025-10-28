@@ -1,8 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 # Load the CSV file
-file_path = 'MNIST_random_30pct.csv'
+file_path = f'{os.getcwd()}\MNIST_random_30pct.csv'
 df = pd.read_csv(file_path)
 
 # Extract relevant columns
