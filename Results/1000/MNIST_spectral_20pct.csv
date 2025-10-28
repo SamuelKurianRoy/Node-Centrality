@@ -1,0 +1,2 @@
+Iteration,Method,Prune_Ratio,Baseline_Accuracy,Accuracy_After_Pruning,Accuracy_After_Finetuning
+1,Spectral,0.2,97.96,97.75,98.06
