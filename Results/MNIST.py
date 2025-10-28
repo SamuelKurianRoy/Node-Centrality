@@ -5,6 +5,9 @@ import os
 # Load the CSV file
 file_path = f'{os.getcwd()}\MNIST_random_30pct.csv'
 df = pd.read_csv(file_path)
+df_spectral= pd.read_csv(f'{os.getcwd()}\MNIST_spectral_30pct.csv')
+spectral_accuracy = df_spectral['Accuracy_After_Finetuning']
+
 
 # Extract relevant columns
 y = df['Accuracy_After_Finetuning']
@@ -19,6 +22,8 @@ plt.bar(x, y, color='skyblue', label='Random Model Accuracy')
 
 # Add baseline line
 plt.axhline(y=baseline_accuracy, color='red', linestyle='--', linewidth=2,
+            label=f'Baseline Accuracy ({baseline_accuracy:.2f})')
+plt.axhline(y=spectral_accuracy, color='blue', linestyle='--', linewidth=2,
             label=f'Baseline Accuracy ({baseline_accuracy:.2f})')
 
 # Add labels and title
