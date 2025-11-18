@@ -15,12 +15,21 @@ random_02 = df[(df['Method'] == 'Random') & (df['Prune_Ratio'] == 0.2)]
 random_03 = df[(df['Method'] == 'Random') & (df['Prune_Ratio'] == 0.3)]
 random_04 = df[(df['Method'] == 'Random') & (df['Prune_Ratio'] == 0.4)]
 
+# Get spectral values for reference
+spectral_02 = df[(df['Method'] == 'Spectral') & (df['Prune_Ratio'] == 0.2)]['Accuracy_After_Finetuning'].values[0]
+spectral_03 = df[(df['Method'] == 'Spectral') & (df['Prune_Ratio'] == 0.3)]['Accuracy_After_Finetuning'].values[0]
+spectral_04 = df[(df['Method'] == 'Spectral') & (df['Prune_Ratio'] == 0.4)]['Accuracy_After_Finetuning'].values[0]
+
 print("=" * 80)
 print("RANDOM METHOD - 1000 EXPERIMENTS VISUALIZATION (Sequential Mode)")
 print("=" * 80)
 print(f"\nRandom 0.2: {len(random_02)} experiments")
 print(f"Random 0.3: {len(random_03)} experiments")
 print(f"Random 0.4: {len(random_04)} experiments")
+print(f"\nSpectral Reference Values:")
+print(f"  Spectral 0.2: {spectral_02:.4f}%")
+print(f"  Spectral 0.3: {spectral_03:.4f}%")
+print(f"  Spectral 0.4: {spectral_04:.4f}%")
 print("\nEach graph will appear one by one. Close the window to see the next visualization.\n")
 
 # Color mapping
@@ -42,17 +51,19 @@ max_acc = data_sorted['Accuracy_After_Finetuning'].max()
 std_acc = data_sorted['Accuracy_After_Finetuning'].std()
 
 ax.axhline(y=mean_acc, color='red', linestyle='--', linewidth=3,
-          label=f'Mean: {mean_acc:.4f}%')
+          label=f'Random Mean: {mean_acc:.4f}%')
 ax.axhline(y=min_acc, color='gray', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Min: {min_acc:.4f}%')
+          label=f'Random Min: {min_acc:.4f}%')
 ax.axhline(y=max_acc, color='darkgreen', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Max: {max_acc:.4f}%')
+          label=f'Random Max: {max_acc:.4f}%')
+ax.axhline(y=spectral_02, color='purple', linestyle='-', linewidth=3.5,
+          label=f'Spectral: {spectral_02:.4f}%')
 ax.fill_between(experiment_nums, mean_acc - std_acc, mean_acc + std_acc,
                 alpha=0.2, color='red', label=f'±1 Std Dev: {std_acc:.4f}%')
 
 ax.set_xlabel('Experiment Number', fontsize=13, fontweight='bold')
 ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
-ax.set_title('Random Pruning - Prune Ratio 0.2\nBar Chart of All 1000 Experiments',
+ax.set_title('Random Pruning - Prune Ratio 0.2\nBar Chart of All 1000 Experiments (with Spectral Reference)',
             fontsize=14, fontweight='bold', pad=20)
 ax.legend(fontsize=11, loc='lower right')
 ax.grid(True, alpha=0.3)
@@ -79,17 +90,19 @@ max_acc = data_sorted['Accuracy_After_Finetuning'].max()
 std_acc = data_sorted['Accuracy_After_Finetuning'].std()
 
 ax.axhline(y=mean_acc, color='red', linestyle='--', linewidth=3,
-          label=f'Mean: {mean_acc:.4f}%')
+          label=f'Random Mean: {mean_acc:.4f}%')
 ax.axhline(y=min_acc, color='gray', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Min: {min_acc:.4f}%')
+          label=f'Random Min: {min_acc:.4f}%')
 ax.axhline(y=max_acc, color='darkgreen', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Max: {max_acc:.4f}%')
+          label=f'Random Max: {max_acc:.4f}%')
+ax.axhline(y=spectral_03, color='purple', linestyle='-', linewidth=3.5,
+          label=f'Spectral: {spectral_03:.4f}%')
 ax.fill_between(experiment_nums, mean_acc - std_acc, mean_acc + std_acc,
                 alpha=0.2, color='red', label=f'±1 Std Dev: {std_acc:.4f}%')
 
 ax.set_xlabel('Experiment Number', fontsize=13, fontweight='bold')
 ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
-ax.set_title('Random Pruning - Prune Ratio 0.3\nBar Chart of All 1000 Experiments',
+ax.set_title('Random Pruning - Prune Ratio 0.3\nBar Chart of All 1000 Experiments (with Spectral Reference)',
             fontsize=14, fontweight='bold', pad=20)
 ax.legend(fontsize=11, loc='lower right')
 ax.grid(True, alpha=0.3)
@@ -116,17 +129,19 @@ max_acc = data_sorted['Accuracy_After_Finetuning'].max()
 std_acc = data_sorted['Accuracy_After_Finetuning'].std()
 
 ax.axhline(y=mean_acc, color='red', linestyle='--', linewidth=3,
-          label=f'Mean: {mean_acc:.4f}%')
+          label=f'Random Mean: {mean_acc:.4f}%')
 ax.axhline(y=min_acc, color='gray', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Min: {min_acc:.4f}%')
+          label=f'Random Min: {min_acc:.4f}%')
 ax.axhline(y=max_acc, color='darkgreen', linestyle=':', linewidth=2, alpha=0.7,
-          label=f'Max: {max_acc:.4f}%')
+          label=f'Random Max: {max_acc:.4f}%')
+ax.axhline(y=spectral_04, color='purple', linestyle='-', linewidth=3.5,
+          label=f'Spectral: {spectral_04:.4f}%')
 ax.fill_between(experiment_nums, mean_acc - std_acc, mean_acc + std_acc,
                 alpha=0.2, color='red', label=f'±1 Std Dev: {std_acc:.4f}%')
 
 ax.set_xlabel('Experiment Number', fontsize=13, fontweight='bold')
 ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
-ax.set_title('Random Pruning - Prune Ratio 0.4\nBar Chart of All 1000 Experiments',
+ax.set_title('Random Pruning - Prune Ratio 0.4\nBar Chart of All 1000 Experiments (with Spectral Reference)',
             fontsize=14, fontweight='bold', pad=20)
 ax.legend(fontsize=11, loc='lower right')
 ax.grid(True, alpha=0.3)
@@ -248,39 +263,116 @@ plt.savefig('Random_0.4_Histogram.png', dpi=300, bbox_inches='tight', facecolor=
 print("  ✓ Saved as 'Random_0.4_Histogram.png'")
 plt.show()
 
-# ===== VISUALIZATION 7: Box Plot Comparison =====
-print("\nGraph 7/9: Box Plot Comparison (All 3 Ratios)")
-fig, ax = plt.subplots(figsize=(12, 7))
+# ===== VISUALIZATION 7: Box Plot - Prune Ratio 0.2 =====
+print("\nGraph 7/9: Box Plot - Random Prune Ratio 0.2")
+fig, ax = plt.subplots(figsize=(10, 7))
 
-data_list = [random_02['Accuracy_After_Finetuning'].values,
-             random_03['Accuracy_After_Finetuning'].values,
-             random_04['Accuracy_After_Finetuning'].values]
-labels = ['Prune Ratio 0.2\n(1000 experiments)', 
-          'Prune Ratio 0.3\n(1000 experiments)', 
-          'Prune Ratio 0.4\n(1000 experiments)']
+data_02 = random_02['Accuracy_After_Finetuning'].values
+bp = ax.boxplot([data_02], labels=['Prune Ratio 0.2\n(1000 experiments)'], 
+                patch_artist=True, widths=0.6, showmeans=True, meanline=True)
 
-bp = ax.boxplot(data_list, labels=labels, patch_artist=True, widths=0.6,
-                showmeans=True, meanline=True)
-
-for patch, color in zip(bp['boxes'], [colors[0.2], colors[0.3], colors[0.4]]):
-    patch.set_facecolor(color)
+for patch in bp['boxes']:
+    patch.set_facecolor(colors[0.2])
     patch.set_alpha(0.7)
 
 for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
     plt.setp(bp[element], color='black', linewidth=2)
 
+# Add Spectral reference line
+ax.axhline(y=spectral_02, color='purple', linestyle='-', linewidth=3.5, alpha=0.9,
+          label=f'Spectral: {spectral_02:.4f}%')
+
+# Add statistics text
+stats_text = f'Mean: {data_02.mean():.4f}%\nMedian: {np.median(data_02):.4f}%\nStd: {data_02.std():.4f}%\nMin: {data_02.min():.4f}%\nMax: {data_02.max():.4f}%'
+ax.text(1.35, data_02.min() + 0.15, stats_text, fontsize=10, 
+       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+
 ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
-ax.set_title('Box Plot Comparison - Random Pruning Across All Prune Ratios\n(1000 Experiments Each)',
+ax.set_title('Box Plot - Random Pruning Prune Ratio 0.2 with Spectral Reference\n(1000 Random Experiments)',
             fontsize=14, fontweight='bold', pad=20)
+ax.legend(fontsize=12, loc='upper right')
 ax.grid(True, alpha=0.3, axis='y')
+ax.set_ylim([97.2, 98.4])
 
 plt.tight_layout()
-plt.savefig('Random_BoxPlot_Comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("  ✓ Saved as 'Random_BoxPlot_Comparison.png'")
+plt.savefig('Random_0.2_BoxPlot.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("  ✓ Saved as 'Random_0.2_BoxPlot.png'")
 plt.show()
 
-# ===== VISUALIZATION 8: Training Time Histogram =====
-print("\nGraph 8/9: Training Time Distribution (All 3000 Experiments)")
+# ===== VISUALIZATION 8: Box Plot - Prune Ratio 0.3 =====
+print("\nGraph 8/9: Box Plot - Random Prune Ratio 0.3")
+fig, ax = plt.subplots(figsize=(10, 7))
+
+data_03 = random_03['Accuracy_After_Finetuning'].values
+bp = ax.boxplot([data_03], labels=['Prune Ratio 0.3\n(1000 experiments)'], 
+                patch_artist=True, widths=0.6, showmeans=True, meanline=True)
+
+for patch in bp['boxes']:
+    patch.set_facecolor(colors[0.3])
+    patch.set_alpha(0.7)
+
+for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
+    plt.setp(bp[element], color='black', linewidth=2)
+
+# Add Spectral reference line
+ax.axhline(y=spectral_03, color='darkviolet', linestyle='-', linewidth=3.5, alpha=0.9,
+          label=f'Spectral: {spectral_03:.4f}%')
+
+# Add statistics text
+stats_text = f'Mean: {data_03.mean():.4f}%\nMedian: {np.median(data_03):.4f}%\nStd: {data_03.std():.4f}%\nMin: {data_03.min():.4f}%\nMax: {data_03.max():.4f}%'
+ax.text(1.35, data_03.min() + 0.15, stats_text, fontsize=10, 
+       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+
+ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
+ax.set_title('Box Plot - Random Pruning Prune Ratio 0.3 with Spectral Reference\n(1000 Random Experiments)',
+            fontsize=14, fontweight='bold', pad=20)
+ax.legend(fontsize=12, loc='upper right')
+ax.grid(True, alpha=0.3, axis='y')
+ax.set_ylim([97.2, 98.4])
+
+plt.tight_layout()
+plt.savefig('Random_0.3_BoxPlot.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("  ✓ Saved as 'Random_0.3_BoxPlot.png'")
+plt.show()
+
+# ===== VISUALIZATION 9: Box Plot - Prune Ratio 0.4 =====
+print("\nGraph 9/9: Box Plot - Random Prune Ratio 0.4")
+fig, ax = plt.subplots(figsize=(10, 7))
+
+data_04 = random_04['Accuracy_After_Finetuning'].values
+bp = ax.boxplot([data_04], labels=['Prune Ratio 0.4\n(1000 experiments)'], 
+                patch_artist=True, widths=0.6, showmeans=True, meanline=True)
+
+for patch in bp['boxes']:
+    patch.set_facecolor(colors[0.4])
+    patch.set_alpha(0.7)
+
+for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
+    plt.setp(bp[element], color='black', linewidth=2)
+
+# Add Spectral reference line
+ax.axhline(y=spectral_04, color='indigo', linestyle='-', linewidth=3.5, alpha=0.9,
+          label=f'Spectral: {spectral_04:.4f}%')
+
+# Add statistics text
+stats_text = f'Mean: {data_04.mean():.4f}%\nMedian: {np.median(data_04):.4f}%\nStd: {data_04.std():.4f}%\nMin: {data_04.min():.4f}%\nMax: {data_04.max():.4f}%'
+ax.text(1.35, data_04.min() + 0.15, stats_text, fontsize=10, 
+       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+
+ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
+ax.set_title('Box Plot - Random Pruning Prune Ratio 0.4 with Spectral Reference\n(1000 Random Experiments)',
+            fontsize=14, fontweight='bold', pad=20)
+ax.legend(fontsize=12, loc='upper right')
+ax.grid(True, alpha=0.3, axis='y')
+ax.set_ylim([97.2, 98.4])
+
+plt.tight_layout()
+plt.savefig('Random_0.4_BoxPlot.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("  ✓ Saved as 'Random_0.4_BoxPlot.png'")
+plt.show()
+
+# ===== VISUALIZATION 10: Training Time Histogram =====
+print("\nGraph 10/11: Training Time Distribution (All 3000 Experiments)")
 fig, ax = plt.subplots(figsize=(14, 6))
 
 all_training_times = pd.concat([random_02, random_03, random_04])['Training_Time_sec']
@@ -315,8 +407,8 @@ plt.savefig('Random_Training_Time_Distribution.png', dpi=300, bbox_inches='tight
 print("  ✓ Saved as 'Random_Training_Time_Distribution.png'")
 plt.show()
 
-# ===== VISUALIZATION 9: Cumulative Distribution Function =====
-print("\nGraph 9/9: Cumulative Distribution Function (CDF)")
+# ===== VISUALIZATION 11: Cumulative Distribution Function =====
+print("\nGraph 11/11: Cumulative Distribution Function (CDF)")
 fig, ax = plt.subplots(figsize=(14, 7))
 
 for ratio, color, label in [(0.2, colors[0.2], 'Prune Ratio 0.2'),
@@ -401,7 +493,9 @@ print("  3. Random_0.4_Bar_Chart.png")
 print("  4. Random_0.2_Histogram.png")
 print("  5. Random_0.3_Histogram.png")
 print("  6. Random_0.4_Histogram.png")
-print("  7. Random_BoxPlot_Comparison.png")
-print("  8. Random_Training_Time_Distribution.png")
-print("  9. Random_CDF_Comparison.png")
+print("  7. Random_0.2_BoxPlot.png")
+print("  8. Random_0.3_BoxPlot.png")
+print("  9. Random_0.4_BoxPlot.png")
+print("  10. Random_Training_Time_Distribution.png")
+print("  11. Random_CDF_Comparison.png")
 print("\n" + "="*80)
