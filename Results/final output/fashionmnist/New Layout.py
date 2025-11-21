@@ -7,7 +7,7 @@ import seaborn as sns
 sns.set_style("whitegrid")
 
 # Load the data
-df = pd.read_csv('MNIST_final_output.csv')
+df = pd.read_csv('FashionMNIST_pruning_results_20251118_214424.csv')
 
 # Get random experiments for all ratios
 random_02 = df[(df['Method'] == 'Random') & (df['Prune_Ratio'] == 0.2)]
@@ -193,19 +193,8 @@ for element in ['whiskers', 'fliers', 'means', 'medians', 'caps']:
 
 # Add spectral reference lines
 spectral_values = [spectral_02, spectral_03, spectral_04]
-spectral_colors = ['purple', 'darkviolet', 'indigo']
-spectral_labels = ['Spectral 0.2', 'Spectral 0.3', 'Spectral 0.4']
-for i, (spectral_val, color, label) in enumerate(zip(spectral_values, spectral_colors, spectral_labels)):
-    ax.plot([i+0.7, i+1.3], [spectral_val, spectral_val], color=color, linestyle='-', 
-            linewidth=2.5, alpha=0.9, label=label if i == 0 else "")
-
-# Add legend for spectral lines
-handles, labels = ax.get_legend_handles_labels()
-# Create custom legend entries for all spectral lines
-from matplotlib.lines import Line2D
-custom_lines = [Line2D([0], [0], color=color, linewidth=2.5, linestyle='-') 
-                for color in spectral_colors]
-ax.legend(custom_lines, spectral_labels, fontsize=9, loc='upper right')
+for i, (spectral_val, color) in enumerate(zip(spectral_values, ['purple', 'darkviolet', 'indigo'])):
+    ax.plot([i+0.7, i+1.3], [spectral_val, spectral_val], color=color, linestyle='-', linewidth=2.5, alpha=0.9)
 
 ax.set_ylabel('Accuracy (%)', fontsize=11, fontweight='bold')
 ax.grid(True, alpha=0.3, axis='y')
