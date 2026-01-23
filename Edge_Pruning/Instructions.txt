@@ -5,3 +5,25 @@ pip install torch torchvision scipy pandas openpyxl thop psutil
 #To run code in background and write results to a notepad
 
 nohup python logger_run_edge_pruning_dgx.py > run_output.log 2>&1 &
+
+
+#Configuration Options
+#Adjust these at the top of the file:
+
+#DATASET_NAME: "MNIST", "FashionMNIST", "KMNIST", "CIFAR10"
+#PRUNE_RATIOS: [0.3, 0.5, 0.7] - Edge pruning ratios
+#NUM_RANDOM_TRIALS: 500 - Random trials per ratio
+#TOP_K: 10 - Candidates to finetune
+#BASELINE_EPOCHS: 10
+#FINETUNE_EPOCHS: 5
+#DATA_LOADER_WORKERS: 8 - Increase for DGX
+
+#currently  ഇത്  MNIST ആ SET ചെയ്തേക്കുന്നേ അത്  മാറ്റാൻ മറക്കല്ലേ for next dataset
+#also pruning ratios, can be kept the same in the node pruning, if you want. same for epochs and fine tuning
+
+
+
+
+
+
+
