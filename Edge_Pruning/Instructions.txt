@@ -1,0 +1,7 @@
+# Install dependencies
+pip install torch torchvision scipy pandas openpyxl thop psutil
+
+
+#To run code
+
+nohup python logger_run_edge_pruning_dgx.py > run_output.log 2>&1 &
