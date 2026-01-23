@@ -2,6 +2,6 @@
 pip install torch torchvision scipy pandas openpyxl thop psutil
 
 
-#To run code
+#To run code in background and write results to a notepad
 
 nohup python logger_run_edge_pruning_dgx.py > run_output.log 2>&1 &
