@@ -539,12 +539,12 @@ def run_experiment(params):
             pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader)
             is_edge_prune = True
 
-        elif pruning_method == 'random_edge':
-            # EDGE pruning randomly
+        elif pruning_method.startswith('random_edge'):
+            # Extract trial number as seed so each trial is reproducible but different
+            trial_seed   = int(pruning_method.replace('random_edge_trial', '')) if 'trial' in pruning_method else None
             pruner       = RandomEdgePruner(original_model, device)
-            pruned_model = pruner.prune_layer('fc1', prune_ratio)
+            pruned_model = pruner.prune_layer('fc1', prune_ratio, trial_seed=trial_seed)
             is_edge_prune = True
-
         else:
             raise ValueError(f"Unknown pruning method: {pruning_method}")
 
@@ -564,7 +564,7 @@ def run_experiment(params):
         return {
             'dataset':      dataset_name,
             'prune_ratio':  f"{prune_ratio*100:.0f}%",
-            'method':       pruning_method,
+            'method': 'random_edge' if pruning_method.startswith('random_edge') else pruning_method,
             'original_acc': f"{original_accuracy:.2f}%",
             'finetuned_acc':f"{finetuned_accuracy:.2f}%",
             'acc_drop':     f"{original_accuracy - finetuned_accuracy:.2f}%",
