@@ -653,9 +653,11 @@ def run_experiment(params):
             pruner       = SpectralPruner(original_model, device)
             pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader)
 
-        elif pruning_method == 'random_node':
-            pruner       = RandomPruner(original_model, device)
-            pruned_model = pruner.prune_layer('fc1', prune_ratio)
+        elif pruning_method.startswith('random_node'):
+            trial_seed = (int(pruning_method.replace('random_node_trial', ''))
+                          if 'trial' in pruning_method else None)
+            pruner = RandomPruner(original_model, device)
+            pruned_model = pruner.prune_layer('fc1', prune_ratio, trial_seed=trial_seed)
 
         elif pruning_method == 'l1_norm':
             pruner       = L1NormPruner(original_model, device)
@@ -705,8 +707,12 @@ def run_experiment(params):
             compression = f"{(1 - pruned_params / original_params) * 100:.1f}% smaller"
 
         # Normalise random_edge_trialN -> random_edge for the results table
-        display_method = ('random_edge' if pruning_method.startswith('random_edge')
-                          else pruning_method)
+        if pruning_method.startswith('random_edge'):
+            display_method = 'random_edge'
+        elif pruning_method.startswith('random_node'):
+            display_method = 'random_node'
+        else:
+            display_method = pruning_method
 
         return {
             'dataset':      dataset_name,
