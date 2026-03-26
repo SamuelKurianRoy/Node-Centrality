@@ -1,0 +1,49 @@
+
+Device: cuda
+Dataset: MNIST, Prune ratio: 30%
+
+Training model...
+Baseline accuracy: 97.99%
+
+
+Computing AEI R values for all 256 neurons...
+
+======================================================================
+  SPECTRAL ANALYSIS — MNIST, 30% sparsity
+  AEI prunes 76 neurons (lowest R = most peripheral)
+======================================================================
+
+Method       |   Overlap w/ AEI |  Avg R-pctile of pruned | Interpretation
+------------------------------------------------------------------------------------------
+  Computing l1_norm...
+  l1_norm      |    27 / 76 ( 35.5%) | avg R-pctile =   45.7       | Slight bias toward peripheral
+  Computing l2_norm...
+  l2_norm      |    28 / 76 ( 36.8%) | avg R-pctile =   43.1       | Slight bias toward peripheral
+  Computing snip...
+  snip         |    23 / 76 ( 30.3%) | avg R-pctile =   48.0       | Slight bias toward peripheral
+  Computing grasp...
+  grasp        |    16 / 76 ( 21.1%) | avg R-pctile =   55.7       | Pruning mid-range neurons
+  Computing random...
+  random       |    20 / 76 ( 26.3%) | avg R-pctile =   50.6       | Pruning mid-range neurons
+
+  (Random expected overlap: 30.0% = 22.8 neurons)
+======================================================================
+
+Generating plots...
+Plot saved to: /content/drive/MyDrive/SpectralPruning_Results/spectral_analysis_MNIST_30pct.png
+
+============================================================
+  HYBRID SCORE ANALYSIS (R_i × L2_norm_i)
+  Prune neurons that are BOTH peripheral AND small-weight
+============================================================
+  AEI vs L2 overlap:     38.2%
+  AEI vs Hybrid overlap: 82.9%
+  L2  vs Hybrid overlap: 51.3%
+
+  Interpretation:
+  -> AEI and L2 are selecting VERY different neurons (38.2% overlap)
+     Hybrid is a genuinely new selection — strong case for combining them.
+============================================================
+
+
+Done.

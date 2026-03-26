@@ -1,0 +1,49 @@
+
+Device: cuda
+Dataset: FashionMNIST, Prune ratio: 30%
+
+Training model...
+Baseline accuracy: 88.20%
+
+
+Computing AEI R values for all 256 neurons...
+
+======================================================================
+  SPECTRAL ANALYSIS — FashionMNIST, 30% sparsity
+  AEI prunes 76 neurons (lowest R = most peripheral)
+======================================================================
+
+Method       |   Overlap w/ AEI |  Avg R-pctile of pruned | Interpretation
+------------------------------------------------------------------------------------------
+  Computing l1_norm...
+  l1_norm      |    26 / 76 ( 34.2%) | avg R-pctile =   47.9       | Slight bias toward peripheral
+  Computing l2_norm...
+  l2_norm      |    24 / 76 ( 31.6%) | avg R-pctile =   49.0       | Slight bias toward peripheral
+  Computing snip...
+  snip         |    12 / 76 ( 15.8%) | avg R-pctile =   63.2       | Pruning mid-range neurons
+  Computing grasp...
+  grasp        |     7 / 76 (  9.2%) | avg R-pctile =   65.0       | Pruning central neurons (opposite to AEI)
+  Computing random...
+  random       |    22 / 76 ( 28.9%) | avg R-pctile =   48.7       | Slight bias toward peripheral
+
+  (Random expected overlap: 30.0% = 22.8 neurons)
+======================================================================
+
+Generating plots...
+Plot saved to: /content/drive/MyDrive/SpectralPruning_Results/spectral_analysis_FashionMNIST_30pct.png
+
+============================================================
+  HYBRID SCORE ANALYSIS (R_i × L2_norm_i)
+  Prune neurons that are BOTH peripheral AND small-weight
+============================================================
+  AEI vs L2 overlap:     30.3%
+  AEI vs Hybrid overlap: 92.1%
+  L2  vs Hybrid overlap: 38.2%
+
+  Interpretation:
+  -> AEI and L2 are selecting VERY different neurons (30.3% overlap)
+     Hybrid is a genuinely new selection — strong case for combining them.
+============================================================
+
+
+Done.
