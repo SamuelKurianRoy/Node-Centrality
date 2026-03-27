@@ -248,6 +248,106 @@ class L2NormPruner:
         return _create_pruned_model(self.model, layer_name, keep_indices, self.device)
 
 
+
+
+# =============================================================================
+# NODE PRUNING 3b — Hybrid (AEI × L2 Norm)
+# =============================================================================
+
+class HybridPruner:
+    """
+    NODE pruning using a combined spectral + magnitude score.
+
+    score_i = R_i_normalised * L2_norm_i_normalised
+
+    R_i  = AEI spectral score (low => structurally peripheral)
+    L2_i = L2 norm of neuron's weight row (low => small magnitude)
+
+    Prunes neurons that are BOTH spectrally peripheral AND have small weights.
+    Spectral analysis showed AEI vs L2 overlap is only ~30%, so this combination
+    captures genuinely different information from either method alone.
+    """
+
+    def __init__(self, model, device='cpu'):
+        self.model = model
+        self.device = device
+        self.activation_storage = {}
+        self.hooks = []
+
+    def _register_hooks(self, layer_names):
+        def make_hook(name):
+            def hook(module, inp, out):
+                self.activation_storage[name] = out.detach()
+            return hook
+        for name, module in self.model.named_modules():
+            if name in layer_names:
+                self.hooks.append(module.register_forward_hook(make_hook(name)))
+
+    def _remove_hooks(self):
+        for h in self.hooks:
+            h.remove()
+        self.hooks = []
+
+    def _collect_activations(self, dataloader, layer_name, num_batches=20):
+        self.activation_storage = {}
+        self._register_hooks([layer_name])
+        self.model.eval()
+        acts = []
+        with torch.no_grad():
+            for i, (data, _) in enumerate(dataloader):
+                if i >= num_batches:
+                    break
+                _ = self.model(data.to(self.device))
+                if layer_name in self.activation_storage:
+                    acts.append(self.activation_storage[layer_name])
+        self._remove_hooks()
+        if not acts:
+            raise ValueError(f"No activations collected for {layer_name}")
+        return torch.cat(acts, dim=0)
+
+    def _compute_R(self, activations):
+        acts_np = activations.view(activations.size(0), -1).cpu().numpy()
+        corr = np.nan_to_num(np.corrcoef(acts_np.T), nan=0.0)
+        adj = np.abs(corr)
+        deg = np.maximum(adj.sum(axis=1), 1e-8)
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(deg))
+        L = np.eye(len(deg)) - D_inv_sqrt @ adj @ D_inv_sqrt
+        _, vecs = eigh(L)
+        v2 = vecs[:, 1]
+        diff = np.abs(v2[:, None] - v2[None, :])
+        R = np.sum(adj * diff, axis=1)
+        return R
+
+    def prune_layer(self, layer_name, prune_ratio, dataloader, num_batches=20):
+        m = self.model.module if isinstance(self.model, nn.DataParallel) else self.model
+        layer = dict(m.named_modules())[layer_name]
+
+        # --- Spectral (R) score ---
+        acts = self._collect_activations(dataloader, layer_name, num_batches)
+        R = self._compute_R(acts)
+
+        # --- L2 norm score ---
+        weights = layer.weight.data.cpu().numpy()          # (out_features, in_features)
+        L2 = np.sqrt(np.sum(weights ** 2, axis=1))        # (out_features,)
+
+        # --- Normalise both to [0, 1] and multiply ---
+        def minmax(v):
+            vmin, vmax = v.min(), v.max()
+            if vmax - vmin < 1e-12:
+                return np.ones_like(v)
+            return (v - vmin) / (vmax - vmin)
+
+        score = minmax(R) * minmax(L2)   # low => peripheral AND weak => prune
+
+        n = len(score)
+        num_keep = int(n * (1 - prune_ratio))
+        keep_indices = np.sort(np.argsort(score)[-num_keep:])   # keep highest scores
+
+        print(f"[Node/Hybrid] Layer '{layer_name}': {n} -> {num_keep} neurons "
+              f"({prune_ratio*100:.1f}% pruned by AEI x L2 hybrid score)")
+
+        return _create_pruned_model(self.model, layer_name, keep_indices, self.device)
+
 # =============================================================================
 # NODE PRUNING 5 — SNIP (Single-shot Network Pruning based on Connection Sensitivity)
 # Lee et al., 2019 — https://arxiv.org/abs/1810.02340
@@ -673,6 +773,10 @@ def run_experiment(params):
 
         elif pruning_method == 'grasp':
             pruner       = GraSPPruner(original_model, device)
+            pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader)
+
+        elif pruning_method == 'hybrid':
+            pruner = HybridPruner(original_model, device)
             pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader)
 
         elif pruning_method == 'spectral_edge':

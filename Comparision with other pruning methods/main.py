@@ -31,7 +31,7 @@ def main():
     # Node-level: spectral, l1_norm, l2_norm, snip, grasp
     # Edge-level: spectral_edge
     # -----------------------------------------------------------------------
-    node_methods = ['spectral', 'l1_norm', 'l2_norm', 'snip', 'grasp']
+    node_methods = ['spectral', 'l1_norm', 'l2_norm', 'snip', 'grasp', 'hybrid']
 
     experiment_params = []
     for dataset in datasets_to_test:
