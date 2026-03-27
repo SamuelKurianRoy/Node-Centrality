@@ -212,6 +212,16 @@ def get_pruned_indices(model, method, prune_ratio, train_loader):
         rng    = np.random.RandomState(42)
         pruned = set(rng.choice(n, num_prune, replace=False).tolist())
 
+    elif method == 'hybrid':
+        R_h, _, _ = compute_all_R_values(model, train_loader)
+        w = model.fc1.weight.data.cpu().numpy()
+        l2 = np.sqrt(np.sum(w ** 2, axis=1))
+        def minmax(v):
+            return (v - v.min()) / (v.max() - v.min() + 1e-8)
+        score = minmax(R_h) * minmax(l2)
+        pruned = set(np.argsort(score)[:num_prune].tolist())
+
+
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -233,7 +243,7 @@ def analyse(model, train_loader, prune_ratio):
     # R value percentile for each neuron (0 = most peripheral, 100 = most central)
     R_percentile = (np.argsort(np.argsort(R)) / (n - 1)) * 100
 
-    methods = ['l1_norm', 'l2_norm', 'snip', 'grasp', 'random']
+    methods = ['l1_norm', 'l2_norm', 'snip', 'grasp', 'random', 'hybrid']
 
     print(f"\n{'='*70}")
     print(f"  SPECTRAL ANALYSIS — {DATASET}, {prune_ratio*100:.0f}% sparsity")
@@ -284,10 +294,10 @@ def plot_spectral_distribution(R, R_percentile, aei_pruned, results, prune_ratio
     One plot per method: histogram of R values for ALL neurons,
     with pruned neurons highlighted in red.
     """
-    methods = ['l1_norm', 'l2_norm', 'snip', 'grasp', 'random']
+    methods = ['l1_norm', 'l2_norm', 'snip', 'grasp', 'random', 'hybrid']
     n       = len(R)
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    fig, axes = plt.subplots(2, 4, figsize=(20, 8))
     fig.suptitle(f'Where each method prunes on the spectral (AEI R value) spectrum\n'
                  f'{DATASET}, {prune_ratio*100:.0f}% sparsity', fontsize=13)
 
