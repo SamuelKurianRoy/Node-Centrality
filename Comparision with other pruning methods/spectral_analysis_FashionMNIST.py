@@ -216,10 +216,10 @@ def get_pruned_indices(model, method, prune_ratio, train_loader):
         R_h, _, _ = compute_all_R_values(model, train_loader)
         w = model.fc1.weight.data.cpu().numpy()
         l2 = np.sqrt(np.sum(w ** 2, axis=1))
-        def minmax(v):
-            return (v - v.min()) / (v.max() - v.min() + 1e-8)
-        score = minmax(R_h) * minmax(l2)
-        pruned = set(np.argsort(score)[:num_prune].tolist())
+        R_h_norm = (R_h - R_h.min()) / (R_h.max() - R_h.min() + 1e-8)
+        l2_norm  = (l2 - l2.min())   / (l2.max()  - l2.min()  + 1e-8)
+        score = R_h_norm * l2_norm
+        pruned = set(int(i) for i in np.argsort(score)[:num_prune])
 
 
     else:

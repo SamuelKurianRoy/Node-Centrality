@@ -354,6 +354,188 @@ class HybridPruner:
 # Adapted here to NODE level: aggregate connection sensitivities per neuron.
 # =============================================================================
 
+
+class StratifiedSpectralPruner:
+    """
+    NODE pruning using AEI R values, but pruning 30% from EACH structural tier
+    rather than only the most peripheral neurons.
+    
+    Divides neurons into K bins by R value, prunes the lowest-R 30% within 
+    each bin. This preserves structural diversity in the pruned network.
+    """
+
+    def __init__(self, model, device='cpu'):
+        self.model = model
+        self.device = device
+        self.activation_storage = {}
+        self.hooks = []
+
+    def _register_hooks(self, layer_names):
+        def make_hook(name):
+            def hook(module, inp, out):
+                self.activation_storage[name] = out.detach()
+            return hook
+        for name, module in self.model.named_modules():
+            if name in layer_names:
+                self.hooks.append(module.register_forward_hook(make_hook(name)))
+
+    def _remove_hooks(self):
+        for h in self.hooks:
+            h.remove()
+        self.hooks = []
+
+    def _collect_activations(self, dataloader, layer_name, num_batches=20):
+        self.activation_storage = {}
+        self._register_hooks([layer_name])
+        self.model.eval()
+        acts = []
+        with torch.no_grad():
+            for i, (data, _) in enumerate(dataloader):
+                if i >= num_batches:
+                    break
+                _ = self.model(data.to(self.device))
+                if layer_name in self.activation_storage:
+                    acts.append(self.activation_storage[layer_name])
+        self._remove_hooks()
+        if not acts:
+            raise ValueError(f"No activations collected for {layer_name}")
+        return torch.cat(acts, dim=0)
+
+    def _compute_R(self, activations):
+        acts_np = activations.view(activations.size(0), -1).cpu().numpy()
+        corr = np.nan_to_num(np.corrcoef(acts_np.T), nan=0.0)
+        adj = np.abs(corr)
+        deg = np.maximum(adj.sum(axis=1), 1e-8)
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(deg))
+        L = np.eye(len(deg)) - D_inv_sqrt @ adj @ D_inv_sqrt
+        _, vecs = eigh(L)
+        v2 = vecs[:, 1]
+        diff = np.abs(v2[:, None] - v2[None, :])
+        R = np.sum(adj * diff, axis=1)
+        return R
+
+    def prune_layer(self, layer_name, prune_ratio, dataloader, num_batches=20, n_bins=10):
+        acts = self._collect_activations(dataloader, layer_name, num_batches)
+        R = self._compute_R(acts)
+
+        n = len(R)
+        sorted_indices = np.argsort(R)          # neurons ordered low R -> high R
+
+        # Split sorted neurons into n_bins equal-ish bins
+        bins = np.array_split(sorted_indices, n_bins)
+
+        prune_indices = []
+        for bin_indices in bins:
+            n_prune_here = max(1, int(len(bin_indices) * prune_ratio))
+            # Within each bin, prune the lowest-R ones (already sorted low->high)
+            prune_indices.extend(bin_indices[:n_prune_here].tolist())
+
+        keep_indices = np.sort(
+            list(set(range(n)) - set(prune_indices))
+        )
+
+        actual_ratio = len(prune_indices) / n * 100
+        print(f"[Node/StratifiedSpectral] Layer '{layer_name}': {n} -> {len(keep_indices)} neurons "
+              f"({actual_ratio:.1f}% pruned across {n_bins} R-value bins)")
+
+        return _create_pruned_model(self.model, layer_name, keep_indices, self.device)
+    
+
+class WeightedSpectralPruner:
+    """
+    NODE pruning using AEI R values with a configurable peripheral/central split.
+    
+    peripheral_fraction = fraction of pruning budget taken from bottom 50% R neurons.
+    
+    peripheral_fraction=1.0 → pure AEI (all pruning from peripheral tier)
+    peripheral_fraction=0.5 → uniform across both tiers
+    peripheral_fraction=0.9 → 90% from peripheral, 10% from central (default)
+    
+    Within each tier, lowest-R neurons are pruned first.
+    """
+
+    def __init__(self, model, device='cpu'):
+        self.model = model
+        self.device = device
+        self.activation_storage = {}
+        self.hooks = []
+
+    def _register_hooks(self, layer_names):
+        def make_hook(name):
+            def hook(module, inp, out):
+                self.activation_storage[name] = out.detach()
+            return hook
+        for name, module in self.model.named_modules():
+            if name in layer_names:
+                self.hooks.append(module.register_forward_hook(make_hook(name)))
+
+    def _remove_hooks(self):
+        for h in self.hooks:
+            h.remove()
+        self.hooks = []
+
+    def _collect_activations(self, dataloader, layer_name, num_batches=20):
+        self.activation_storage = {}
+        self._register_hooks([layer_name])
+        self.model.eval()
+        acts = []
+        with torch.no_grad():
+            for i, (data, _) in enumerate(dataloader):
+                if i >= num_batches:
+                    break
+                _ = self.model(data.to(self.device))
+                if layer_name in self.activation_storage:
+                    acts.append(self.activation_storage[layer_name])
+        self._remove_hooks()
+        if not acts:
+            raise ValueError(f"No activations collected for {layer_name}")
+        return torch.cat(acts, dim=0)
+
+    def _compute_R(self, activations):
+        acts_np = activations.view(activations.size(0), -1).cpu().numpy()
+        corr = np.nan_to_num(np.corrcoef(acts_np.T), nan=0.0)
+        adj = np.abs(corr)
+        deg = np.maximum(adj.sum(axis=1), 1e-8)
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(deg))
+        L = np.eye(len(deg)) - D_inv_sqrt @ adj @ D_inv_sqrt
+        _, vecs = eigh(L)
+        v2 = vecs[:, 1]
+        diff = np.abs(v2[:, None] - v2[None, :])
+        R = np.sum(adj * diff, axis=1)
+        return R
+
+    def prune_layer(self, layer_name, prune_ratio, dataloader,
+                    num_batches=20, peripheral_fraction=0.9):
+        acts = self._collect_activations(dataloader, layer_name, num_batches)
+        R = self._compute_R(acts)
+
+        n = len(R)
+        total_prune = int(n * prune_ratio)
+
+        # Split into peripheral (bottom 50% R) and central (top 50% R)
+        sorted_by_R = np.argsort(R)
+        mid = n // 2
+        peripheral = sorted_by_R[:mid]   # low R — structurally peripheral
+        central    = sorted_by_R[mid:]   # high R — structurally central
+
+        # Allocate pruning budget
+        n_from_peripheral = min(int(total_prune * peripheral_fraction), len(peripheral))
+        n_from_central    = min(total_prune - n_from_peripheral, len(central))
+
+        # Within each tier prune lowest-R first (already sorted)
+        prune_set = set(peripheral[:n_from_peripheral].tolist()) | \
+                    set(central[:n_from_central].tolist())
+
+        keep_indices = np.sort([i for i in range(n) if i not in prune_set])
+
+        print(f"[Node/WeightedSpectral] Layer '{layer_name}': {n} -> {len(keep_indices)} neurons "
+              f"({len(prune_set)/n*100:.1f}% pruned | "
+              f"{n_from_peripheral} peripheral + {n_from_central} central removed | "
+              f"split={peripheral_fraction:.0%}/{1-peripheral_fraction:.0%})")
+
+        return _create_pruned_model(self.model, layer_name, keep_indices, self.device)
+
+
 class SNIPPruner:
     """
     NODE pruning using SNIP sensitivity scores.
@@ -759,6 +941,12 @@ def run_experiment(params):
             pruner = RandomPruner(original_model, device)
             pruned_model = pruner.prune_layer('fc1', prune_ratio, trial_seed=trial_seed)
 
+        elif pruning_method.startswith('spectral_weighted'):
+            # method key encodes the split e.g. 'spectral_weighted_90'
+            pf = float(pruning_method.split('_')[-1]) / 100.0 if '_' in pruning_method.replace('spectral_weighted','') else 0.9
+            pruner = WeightedSpectralPruner(original_model, device)
+            pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader, peripheral_fraction=pf)
+
         elif pruning_method == 'l1_norm':
             pruner       = L1NormPruner(original_model, device)
             pruned_model = pruner.prune_layer('fc1', prune_ratio)
@@ -783,6 +971,10 @@ def run_experiment(params):
             pruner        = SpectralEdgePruner(original_model, device)
             pruned_model  = pruner.prune_layer('fc1', prune_ratio, train_loader)
             is_edge_prune = True
+        
+        elif pruning_method == 'spectral_stratified':
+            pruner = StratifiedSpectralPruner(original_model, device)
+            pruned_model = pruner.prune_layer('fc1', prune_ratio, train_loader)
 
         elif pruning_method.startswith('random_edge'):
             trial_seed    = (int(pruning_method.replace('random_edge_trial', ''))
