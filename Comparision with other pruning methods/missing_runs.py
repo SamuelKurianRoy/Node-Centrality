@@ -24,7 +24,7 @@ import torchvision.transforms as transforms
 try:
     from pruning_logic import (
         SpectralPruner, L1NormPruner, L2NormPruner,
-        SNIPPruner, GraSPPruner, load_dataset,
+        SNIPPruner, GraSPPruner, load_dataset, train_model,
     )
     # HybridPruner may not be in the repo yet — define below if needed
     try:
@@ -302,11 +302,11 @@ def main():
     print("=" * 65, flush=True)
 
     # ── Load data ─────────────────────────────────────────────────────────────
-    if _pruning_logic_available:
-        train_loader, test_loader = load_dataset(DATASET)
-    else:
-        train_loader, test_loader = load_dataset(DATASET)
-
+    train_dataset, test_dataset, input_size, num_classes = load_dataset(DATASET)
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True,
+                              num_workers=2, pin_memory=True)
+    test_loader  = DataLoader(test_dataset,  batch_size=1000, shuffle=False,
+                              num_workers=2, pin_memory=True)
     # ── Train base model with this seed ───────────────────────────────────────
     print(f"\nTraining base model (seed={SEED}, 10 epochs)…", flush=True)
     set_seed(SEED)
@@ -318,8 +318,7 @@ def main():
     else:
         base_model = SimpleMLP().to(device)
 
-    base_model = _train(base_model, train_loader, device, epochs=10, lr=1e-3)
-    base_acc   = _eval(base_model, test_loader, device)
+    base_acc = train_model(base_model, train_loader, test_loader, device, epochs=10, lr=1e-3)
     print(f"Base model accuracy: {base_acc:.2f}%", flush=True)
 
     # ── Run each missing method ────────────────────────────────────────────────
@@ -346,22 +345,20 @@ def main():
                 pruned = pruner.prune_layer('fc1', RATIO)
 
             elif method == 'snip':
-                pruner = SNIPPruner(model_copy, device, train_loader)
-                pruned = pruner.prune_layer('fc1', RATIO)
+                pruner = SNIPPruner(model_copy, device)
+                pruned = pruner.prune_layer('fc1', RATIO, train_loader)
 
             elif method == 'grasp':
-                pruner = GraSPPruner(model_copy, device, train_loader)
-                pruned = pruner.prune_layer('fc1', RATIO)
+                pruner = GraSPPruner(model_copy, device)
+                pruned = pruner.prune_layer('fc1', RATIO, train_loader)
 
             elif method == 'hybrid':
-                pruner = HybridPruner(model_copy, device, train_loader)
-                pruned = pruner.prune_layer('fc1', RATIO)
+                pruner = HybridPruner(model_copy, device)
+                pruned = pruner.prune_layer('fc1', RATIO, train_loader)
 
             # ── Fine-tune ─────────────────────────────────────────────────────
-            pruned = _train(pruned, train_loader, device, epochs=5, lr=1e-4)
-
-            # ── Evaluate ──────────────────────────────────────────────────────
-            acc = _eval(pruned, test_loader, device)
+            set_seed(SEED + 9999)
+            acc = train_model(pruned, train_loader, test_loader, device, epochs=5, lr=1e-4)
             results[method] = acc
             print(f"         -> {acc:.2f}%", flush=True)
 
