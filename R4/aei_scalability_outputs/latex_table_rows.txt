@@ -1,0 +1,2 @@
+Jazz Musicians (real) & 198 & 0.97 & 6.50 & 7.47 \\
+MLP / MNIST (real) & 256 & 13.77 & 26.56 & 40.33 \\
